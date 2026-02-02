@@ -17,6 +17,13 @@ var fontsSimple = DefaultEmbeddedFonts.LoadFontsByNames([]string{
 	"fonts/RitaSmith.ttf",
 	"fonts/actionj.ttf",
 	"fonts/chromohv.ttf",
+	"fonts/BebasNeue-Regular.ttf",
+	"fonts/moms_typewriter.ttf",
+	"fonts/SpecialElite-Regular.ttf",
+	"fonts/zxx-camo.ttf",
+	"fonts/zxx-false.ttf",
+	"fonts/zxx-noise.ttf",
+	"fonts/zxx-xed.ttf",
 })
 
 // var fontemoji = loadFontByName("fonts/seguiemj.ttf")
