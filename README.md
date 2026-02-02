@@ -77,7 +77,7 @@ type Driver interface {
 package base64Captcha
 
 import (
-	"math/rand"
+	"crypto/rand"
 	"time"
 )
 

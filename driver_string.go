@@ -78,20 +78,27 @@ func (d *DriverString) ConvertFonts() *DriverString {
 }
 
 // GenerateIdQuestionAnswer creates id,content and answer
-func (d *DriverString) GenerateIdQuestionAnswer() (id, content, answer string) {
+func (d *DriverString) GenerateIdQuestionAnswer() (id, content, answer string, _ error) {
 	id = RandomId()
-	content = RandText(d.Length, d.Source)
-	return id, content, content
+	content, err := RandText(d.Length, d.Source)
+	if err != nil {
+		return "", "", "", err
+	}
+	return id, content, content, nil
 }
 
 // DrawCaptcha draws captcha item
-func (d *DriverString) DrawCaptcha(content string) (item Item, err error) {
+func (d *DriverString) DrawCaptcha(content string) (item Item, _ error) {
 
 	var bgc color.RGBA
 	if d.BgColor != nil {
 		bgc = *d.BgColor
 	} else {
-		bgc = RandLightColor()
+		var err error
+		bgc, err = RandLightColor()
+		if err != nil {
+			return nil, err
+		}
 	}
 	itemChar := NewItemChar(d.Width, d.Height, bgc)
 
@@ -113,15 +120,18 @@ func (d *DriverString) DrawCaptcha(content string) (item Item, err error) {
 	//draw noise
 	if d.NoiseCount > 0 {
 		source := TxtNumbers + TxtAlphabet + ",.[]<>"
-		noise := RandText(d.NoiseCount, strings.Repeat(source, d.NoiseCount))
+		noise, err := RandText(d.NoiseCount, strings.Repeat(source, d.NoiseCount))
+		if err != nil {
+			return nil, err
+		}
 		err = itemChar.drawNoise(noise, d.fontsArray)
 		if err != nil {
-			return
+			return nil, err
 		}
 	}
 
 	//draw content
-	err = itemChar.drawText(content, d.fontsArray)
+	err := itemChar.drawText(content, d.fontsArray)
 	if err != nil {
 		return
 	}

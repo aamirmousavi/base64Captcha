@@ -30,6 +30,10 @@ func TestDriverDigit_DrawCaptcha(t *testing.T) {
 	type args struct {
 		content string
 	}
+	randText, err := RandText(6, TxtNumbers)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tests := []struct {
 		name     string
 		fields   fields
@@ -37,7 +41,7 @@ func TestDriverDigit_DrawCaptcha(t *testing.T) {
 		wantItem Item
 		wantErr  bool
 	}{
-		{"Digit", fields{80, 240, 6, 0.6, 8}, args{RandText(6, TxtNumbers)}, nil, false},
+		{"Digit", fields{80, 240, 6, 0.6, 8}, args{randText}, nil, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -95,7 +99,11 @@ func TestDriverDigit_GenerateIdQuestionAnswer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotId, gotQ, gotA := tt.d.GenerateIdQuestionAnswer()
+			gotId, gotQ, gotA, err := tt.d.GenerateIdQuestionAnswer()
+			if err != nil {
+				t.Errorf("DriverDigit.GenerateIdQuestionAnswer() error = %v", err)
+				return
+			}
 			if gotId != tt.wantId {
 				t.Errorf("DriverDigit.GenerateIdQuestionAnswer() gotId = %v, want %v", gotId, tt.wantId)
 			}

@@ -74,7 +74,11 @@ func TestDriverAudio_GenerateIdQuestionAnswer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotId, gotQ, gotA := tt.d.GenerateIdQuestionAnswer()
+			gotId, gotQ, gotA, err := tt.d.GenerateIdQuestionAnswer()
+			if err != nil {
+				t.Errorf("DriverAudio.GenerateIdQuestionAnswer() error = %v", err)
+				return
+			}
 			if gotId != tt.wantId {
 				t.Errorf("DriverAudio.GenerateIdQuestionAnswer() gotId = %v, want %v", gotId, tt.wantId)
 			}

@@ -1,9 +1,10 @@
 package base64Captcha
 
 import (
+	"crypto/rand"
 	"fmt"
 	"image/color"
-	"math/rand"
+	"math/big"
 	"strings"
 
 	"github.com/golang/freetype/truetype"
@@ -73,25 +74,59 @@ func (d *DriverMath) ConvertFonts() *DriverMath {
 }
 
 // GenerateIdQuestionAnswer creates id,captcha content and answer
-func (d *DriverMath) GenerateIdQuestionAnswer() (id, question, answer string) {
+func (d *DriverMath) GenerateIdQuestionAnswer() (id, question, answer string, _ error) {
 	id = RandomId()
 	operators := []string{"+", "-", "x"}
 	var mathResult int32
-	switch operators[rand.Int31n(3)] {
+	n, err := rand.Int(rand.Reader, big.NewInt(3))
+	if err != nil {
+		return "", "", "", err
+	}
+	switch operators[int(n.Int64())] {
 	case "+":
-		a := rand.Int31n(20)
-		b := rand.Int31n(20)
+		aN, err := rand.Int(rand.Reader, big.NewInt(20))
+		if err != nil {
+			return "", "", "", err
+		}
+		a := int32(aN.Int64())
+		bN, err := rand.Int(rand.Reader, big.NewInt(20))
+		if err != nil {
+			return "", "", "", err
+		}
+		b := int32(bN.Int64())
 		question = fmt.Sprintf("%d+%d=?", a, b)
 		mathResult = a + b
 	case "x":
-		a := rand.Int31n(10)
-		b := rand.Int31n(10)
+		aN, err := rand.Int(rand.Reader, big.NewInt(10))
+		if err != nil {
+			return "", "", "", err
+		}
+		a := int32(aN.Int64())
+		bN, err := rand.Int(rand.Reader, big.NewInt(10))
+		if err != nil {
+			return "", "", "", err
+		}
+		b := int32(bN.Int64())
 		question = fmt.Sprintf("%dx%d=?", a, b)
 		mathResult = a * b
 	default:
-		a := rand.Int31n(80) + rand.Int31n(20)
-		b := rand.Int31n(80)
+		aNFirst, err := rand.Int(rand.Reader, big.NewInt(100))
+		if err != nil {
+			return "", "", "", err
+		}
+		aFirst := int32(aNFirst.Int64())
+		aNSecond, err := rand.Int(rand.Reader, big.NewInt(20))
+		if err != nil {
+			return "", "", "", err
+		}
+		aSecond := int32(aNSecond.Int64())
+		a := aFirst + aSecond
 
+		bN, err := rand.Int(rand.Reader, big.NewInt(int64(a)))
+		if err != nil {
+			return "", "", "", err
+		}
+		b := int32(bN.Int64())
 		question = fmt.Sprintf("%d-%d=?", a, b)
 		mathResult = a - b
 
@@ -101,12 +136,16 @@ func (d *DriverMath) GenerateIdQuestionAnswer() (id, question, answer string) {
 }
 
 // DrawCaptcha creates math captcha item
-func (d *DriverMath) DrawCaptcha(question string) (item Item, err error) {
+func (d *DriverMath) DrawCaptcha(question string) (item Item, _ error) {
 	var bgc color.RGBA
 	if d.BgColor != nil {
 		bgc = *d.BgColor
 	} else {
-		bgc = RandLightColor()
+		var err error
+		bgc, err = RandLightColor()
+		if err != nil {
+			return nil, err
+		}
 	}
 	itemChar := NewItemChar(d.Width, d.Height, bgc)
 
@@ -117,10 +156,13 @@ func (d *DriverMath) DrawCaptcha(question string) (item Item, err error) {
 
 	//背景有文字干扰
 	if d.NoiseCount > 0 {
-		noise := RandText(d.NoiseCount, strings.Repeat(TxtNumbers, d.NoiseCount))
+		noise, err := RandText(d.NoiseCount, strings.Repeat(TxtNumbers, d.NoiseCount))
+		if err != nil {
+			return nil, err
+		}
 		err = itemChar.drawNoise(noise, fontsAll)
 		if err != nil {
-			return
+			return nil, err
 		}
 	}
 
@@ -135,9 +177,9 @@ func (d *DriverMath) DrawCaptcha(question string) (item Item, err error) {
 	}
 
 	//draw question
-	err = itemChar.drawText(question, d.fontsArray)
+	err := itemChar.drawText(question, d.fontsArray)
 	if err != nil {
-		return
+		return nil, err
 	}
 	return itemChar, nil
 }

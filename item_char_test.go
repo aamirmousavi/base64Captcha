@@ -41,7 +41,12 @@ func TestItemChar_drawHollowLine(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.item.drawHollowLine(); !reflect.DeepEqual(got, tt.want) {
+			got, err := tt.item.drawHollowLine()
+			if err != nil {
+				t.Errorf("ItemChar.drawHollowLine() error = %v", err)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ItemChar.drawHollowLine() = %v, want %v", got, tt.want)
 			}
 		})
@@ -58,7 +63,12 @@ func TestItemChar_drawSineLine(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.item.drawSineLine(); !reflect.DeepEqual(got, tt.want) {
+			got, err := tt.item.drawSineLine()
+			if err != nil {
+				t.Errorf("ItemChar.drawSineLine() error = %v", err)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ItemChar.drawSineLine() = %v, want %v", got, tt.want)
 			}
 		})
@@ -79,7 +89,12 @@ func TestItemChar_drawSlimLine(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.item.drawSlimLine(tt.args.num); !reflect.DeepEqual(got, tt.want) {
+			got, err := tt.item.drawSlimLine(tt.args.num)
+			if err != nil {
+				t.Errorf("ItemChar.drawSlimLine() error = %v", err)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ItemChar.drawSlimLine() = %v, want %v", got, tt.want)
 			}
 		})

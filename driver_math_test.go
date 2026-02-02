@@ -42,7 +42,11 @@ func TestDriverMath_DrawCaptcha(t *testing.T) {
 				Fonts:           tt.fields.Fonts,
 			}
 			d.ConvertFonts()
-			_, q, a := d.GenerateIdQuestionAnswer()
+			_, q, a, err := d.GenerateIdQuestionAnswer()
+			if err != nil {
+				t.Errorf("DriverMath.GenerateIdQuestionAnswer() error = %v", err)
+				return
+			}
 
 			gotItem, err := d.DrawCaptcha(q)
 			if (err != nil) != tt.wantErr {
@@ -109,7 +113,11 @@ func TestDriverMath_GenerateIdQuestionAnswer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotId, gotQuestion, gotAnswer := tt.d.GenerateIdQuestionAnswer()
+			gotId, gotQuestion, gotAnswer, err := tt.d.GenerateIdQuestionAnswer()
+			if err != nil {
+				t.Errorf("DriverMath.GenerateIdQuestionAnswer() error = %v", err)
+				return
+			}
 			if gotId != tt.wantId {
 				t.Errorf("DriverMath.GenerateIdQuestionAnswer() gotId = %v, want %v", gotId, tt.wantId)
 			}

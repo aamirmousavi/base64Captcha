@@ -17,7 +17,8 @@
 package base64Captcha
 
 import (
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"reflect"
 	"testing"
 )
@@ -29,7 +30,11 @@ func TestCaptcha_GenerateB64s(t *testing.T) {
 	}
 
 	dDigit := DriverDigit{80, 240, 5, 0.7, 5}
-	audioDriver := NewDriverAudio(rand.Intn(5), "en")
+	n, err := rand.Int(rand.Reader, big.NewInt(5))
+	if err != nil {
+		t.Fatal(err)
+	}
+	audioDriver := NewDriverAudio(int(n.Int64()), "en")
 	tests := []struct {
 		name     string
 		fields   fields

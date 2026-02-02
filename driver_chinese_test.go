@@ -62,7 +62,11 @@ func TestDriverChinese_GenerateIdQuestionAnswer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotId, gotContent, gotAnswer := tt.d.GenerateIdQuestionAnswer()
+			gotId, gotContent, gotAnswer, err := tt.d.GenerateIdQuestionAnswer()
+			if err != nil {
+				t.Errorf("DriverChinese.GenerateIdQuestionAnswer() error = %v", err)
+				return
+			}
 			if gotId != tt.wantId {
 				t.Errorf("DriverChinese.GenerateIdQuestionAnswer() gotId = %v, want %v", gotId, tt.wantId)
 			}

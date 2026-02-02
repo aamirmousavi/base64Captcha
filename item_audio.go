@@ -6,11 +6,12 @@ package base64Captcha
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/big"
 )
 
 // ItemAudio captcha-audio-engine return type.
@@ -25,7 +26,7 @@ type ItemAudio struct {
 // must be in range 0-9. Digits are pronounced in the given language. If there
 // are no sounds for the given language, English is used.
 // Possible values for lang are "en", "ja", "ru", "zh".
-func newAudio(id string, digits []byte, lang string) *ItemAudio {
+func newAudio(id string, digits []byte, lang string) (*ItemAudio, error) {
 	a := new(ItemAudio)
 
 	if sounds, ok := digitSounds[lang]; ok {
@@ -35,7 +36,10 @@ func newAudio(id string, digits []byte, lang string) *ItemAudio {
 	}
 	numsnd := make([][]byte, len(digits))
 	for i, n := range digits {
-		snd := a.randomizedDigitSound(n)
+		snd, err := a.randomizedDigitSound(n)
+		if err != nil {
+			return nil, err
+		}
 		setSoundLevel(snd, 1.5)
 		numsnd[i] = snd
 	}
@@ -43,12 +47,18 @@ func newAudio(id string, digits []byte, lang string) *ItemAudio {
 	intervals := make([]int, len(digits)+1)
 	intdur := 0
 	for i := range intervals {
-		dur := randIntRange(sampleRate, sampleRate*2) // 1 to 2 seconds
+		dur, err := randIntRange(sampleRate, sampleRate*2) // 1 to 2 seconds
+		if err != nil {
+			return nil, err
+		}
 		intdur += dur
 		intervals[i] = dur
 	}
 	// Generate background sound.
-	bg := a.makeBackgroundSound(a.longestDigitSndLen()*len(digits) + intdur)
+	bg, err := a.makeBackgroundSound(a.longestDigitSndLen()*len(digits) + intdur)
+	if err != nil {
+		return nil, err
+	}
 	// Create buffer and write audio to it.
 	sil := makeSilence(sampleRate / 5)
 	bufcap := 3*len(beepSound) + 2*len(sil) + len(bg) + len(endingBeepSound)
@@ -68,7 +78,7 @@ func newAudio(id string, digits []byte, lang string) *ItemAudio {
 	a.body.Write(bg)
 	// Write ending (one beep).
 	a.body.Write(endingBeepSound)
-	return a
+	return a, nil
 }
 
 // encodedLen returns the length of WAV-encoded audio captcha.
@@ -76,22 +86,43 @@ func (a *ItemAudio) encodedLen() int {
 	return len(waveHeader) + 4 + a.body.Len()
 }
 
-func (a *ItemAudio) makeBackgroundSound(length int) []byte {
-	b := a.makeWhiteNoise(length, 4)
+func (a *ItemAudio) makeBackgroundSound(length int) ([]byte, error) {
+	b, err := a.makeWhiteNoise(length, 4)
+	if err != nil {
+		return nil, err
+	}
 	for i := 0; i < length/(sampleRate/10); i++ {
-		snd := reversedSound(a.digitSounds[rand.Intn(10)])
-		//snd = changeSpeed(snd, a.rng.Float(0.8, 1.2))
-		place := rand.Intn(len(b) - len(snd))
-		setSoundLevel(snd, randFloat64Range(0.04, 0.08))
+		n, err := rand.Int(rand.Reader, big.NewInt(10))
+		if err != nil {
+			return nil, err
+		}
+		snd := reversedSound(a.digitSounds[int(n.Int64())])
+		placeN, err := rand.Int(rand.Reader, big.NewInt(int64(len(b)-len(snd))))
+		if err != nil {
+			return nil, err
+		}
+		place := int(placeN.Int64())
+		randFRange, err := randFloat64Range(0.04, 0.08)
+		if err != nil {
+			return nil, err
+		}
+		setSoundLevel(snd, randFRange)
 		mixSound(b[place:], snd)
 	}
-	return b
+	return b, nil
 }
 
-func (a *ItemAudio) randomizedDigitSound(n byte) []byte {
-	s := a.randomSpeed(a.digitSounds[n])
-	setSoundLevel(s, randFloat64Range(0.85, 1.2))
-	return s
+func (a *ItemAudio) randomizedDigitSound(n byte) ([]byte, error) {
+	s, err := a.randomSpeed(a.digitSounds[n])
+	if err != nil {
+		return nil, err
+	}
+	randFRange, err := randFloat64Range(0.85, 1.2)
+	if err != nil {
+		return nil, err
+	}
+	setSoundLevel(s, randFRange)
+	return s, nil
 }
 
 func (a *ItemAudio) longestDigitSndLen() int {
@@ -104,20 +135,26 @@ func (a *ItemAudio) longestDigitSndLen() int {
 	return n
 }
 
-func (a *ItemAudio) randomSpeed(b []byte) []byte {
-	pitch := randFloat64Range(0.95, 1.1)
-	return changeSpeed(b, pitch)
+func (a *ItemAudio) randomSpeed(b []byte) ([]byte, error) {
+	pitch, err := randFloat64Range(0.95, 1.1)
+	if err != nil {
+		return nil, err
+	}
+	return changeSpeed(b, pitch), nil
 }
 
-func (a *ItemAudio) makeWhiteNoise(length int, level uint8) []byte {
-	noise := randBytes(length)
+func (a *ItemAudio) makeWhiteNoise(length int, level uint8) ([]byte, error) {
+	noise, err := randBytes(length)
+	if err != nil {
+		return nil, err
+	}
 	adj := 128 - level/2
 	for i, v := range noise {
 		v %= level
 		v += adj
 		noise[i] = v
 	}
-	return noise
+	return noise, nil
 }
 
 // WriteTo writes captcha audio in WAVE format into the given io.Writer, and

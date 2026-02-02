@@ -2,6 +2,7 @@ package base64Captcha
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"image"
@@ -9,7 +10,7 @@ import (
 	"image/png"
 	"io"
 	"math"
-	"math/rand"
+	"math/big"
 )
 
 const (
@@ -30,36 +31,58 @@ type ItemDigit struct {
 }
 
 // NewItemDigit create a instance of item-digit
-func NewItemDigit(width int, height int, dotCount int, maxSkew float64) *ItemDigit {
+func NewItemDigit(width int, height int, dotCount int, maxSkew float64) (*ItemDigit, error) {
 	itemDigit := &ItemDigit{width: width, height: height, dotCount: dotCount, maxSkew: maxSkew}
 	//init image.Paletted
-	itemDigit.Paletted = image.NewPaletted(image.Rect(0, 0, width, height), createRandPaletteColors(dotCount))
-	return itemDigit
+	colorPalette, err := createRandPaletteColors(dotCount)
+	if err != nil {
+		return nil, err
+	}
+	itemDigit.Paletted = image.NewPaletted(image.Rect(0, 0, width, height), colorPalette)
+	return itemDigit, nil
 }
 
-func createRandPaletteColors(dotCount int) color.Palette {
+func createRandPaletteColors(dotCount int) (color.Palette, error) {
 	p := make([]color.Color, dotCount+1)
 	// Transparent color.
 	p[0] = color.RGBA{0xFF, 0xFF, 0xFF, 0x00}
 	// Primary color.
+	GN, err := rand.Int(rand.Reader, big.NewInt(129))
+	if err != nil {
+		return nil, err
+	}
+	green := int(GN.Int64())
+	RN, err := rand.Int(rand.Reader, big.NewInt(129))
+	if err != nil {
+		return nil, err
+	}
+	red := int(RN.Int64())
+	BN, err := rand.Int(rand.Reader, big.NewInt(129))
+	if err != nil {
+		return nil, err
+	}
+	blue := int(BN.Int64())
 	prim := color.RGBA{
-		uint8(rand.Intn(129)),
-		uint8(rand.Intn(129)),
-		uint8(rand.Intn(129)),
+		uint8(red),
+		uint8(green),
+		uint8(blue),
 		0xFF,
 	}
 
 	if dotCount == 0 {
 		p[0] = prim
-		return p
+		return p, fmt.Errorf("dotCount must be greater than 0")
 	}
 
 	p[1] = prim
 	// Circle colors.
 	for i := 2; i <= dotCount; i++ {
-		p[i] = randomBrightness(prim, 255)
+		p[i], err = randomBrightness(prim, 255)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return p
+	return p, nil
 }
 
 func (m *ItemDigit) calculateSizes(width, height, ncount int) {
@@ -132,43 +155,78 @@ func (m *ItemDigit) drawCircle(x, y, radius int, colorIdx uint8) {
 	}
 }
 
-func (m *ItemDigit) fillWithCircles(n, maxradius int) {
+func (m *ItemDigit) fillWithCircles(n, maxradius int) error {
 	maxx := m.Bounds().Max.X
 	maxy := m.Bounds().Max.Y
 	for i := 0; i < n; i++ {
 		//colorIdx := uint8(m.rng.Int(1, m.dotCount-1))
-		colorIdx := uint8(randIntRange(1, m.dotCount-1))
+		colorIdx, err := randIntRange(1, m.dotCount-1)
+		if err != nil {
+			return err
+		}
 		//r := m.rng.Int(1, maxradius)
-		r := randIntRange(1, maxradius)
+		r, err := randIntRange(1, maxradius)
+		if err != nil {
+			return err
+		}
 		//m.drawCircle(m.rng.Int(r, maxx-r), m.rng.Int(r, maxy-r), r, colorIdx)
-		m.drawCircle(randIntRange(r, maxx-r), randIntRange(r, maxy-r), r, colorIdx)
+		x, err := randIntRange(r, maxx-r)
+		if err != nil {
+			return err
+		}
+		y, err := randIntRange(r, maxy-r)
+		if err != nil {
+			return err
+		}
+		m.drawCircle(x, y, r, uint8(colorIdx))
 	}
+	return nil
 }
 
-func (m *ItemDigit) strikeThrough() {
+func (m *ItemDigit) strikeThrough() error {
 	maxx := m.Bounds().Max.X
 	maxy := m.Bounds().Max.Y
-	y := randIntRange(maxy/3, maxy-maxy/3)
-	amplitude := randFloat64Range(5, 20)
-	period := randFloat64Range(80, 180)
+	y, err := randIntRange(maxy/3, maxy-maxy/3)
+	if err != nil {
+		return err
+	}
+	amplitude, err := randFloat64Range(5, 20)
+	if err != nil {
+		return err
+	}
+	period, err := randFloat64Range(80, 180)
+	if err != nil {
+		return err
+	}
 	dx := 2.0 * math.Pi / period
 	for x := 0; x < maxx; x++ {
 		xo := amplitude * math.Cos(float64(y)*dx)
 		yo := amplitude * math.Sin(float64(x)*dx)
 		for yn := 0; yn < m.dotSize; yn++ {
-			//r := m.rng.Int(0, m.dotSize)
-			r := rand.Intn(m.dotSize)
+			rN, err := rand.Int(rand.Reader, big.NewInt(int64(m.dotSize)))
+			if err != nil {
+				return err
+			}
+			r := int(rN.Int64())
 			m.drawCircle(x+int(xo), y+int(yo)+(yn*m.dotSize), r/2, 1)
 		}
 	}
+	return nil
 }
 
 // draw digit
-func (m *ItemDigit) drawDigit(digit []byte, x, y int) {
-	skf := randFloat64Range(-m.maxSkew, m.maxSkew)
+func (m *ItemDigit) drawDigit(digit []byte, x, y int) error {
+	skf, err := randFloat64Range(-m.maxSkew, m.maxSkew)
+	if err != nil {
+		return err
+	}
 	xs := float64(x)
 	r := m.dotSize / 2
-	y += randIntRange(-r, r)
+	ySum, err := randIntRange(-r, r)
+	if err != nil {
+		return err
+	}
+	y += ySum
 	for yo := 0; yo < digitFontHeight; yo++ {
 		for xo := 0; xo < digitFontWidth; xo++ {
 			if digit[yo*digitFontWidth+xo] != digitFontBlackChar {
@@ -179,6 +237,7 @@ func (m *ItemDigit) drawDigit(digit []byte, x, y int) {
 		xs += skf
 		x = int(xs)
 	}
+	return nil
 }
 
 func (m *ItemDigit) distort(amplude float64, period float64) {
@@ -199,19 +258,24 @@ func (m *ItemDigit) distort(amplude float64, period float64) {
 	m.Paletted = newm
 }
 
-func randomBrightness(c color.RGBA, max uint8) color.RGBA {
+func randomBrightness(c color.RGBA, max uint8) (color.RGBA, error) {
 	minc := min3(c.R, c.G, c.B)
 	maxc := max3(c.R, c.G, c.B)
 	if maxc > max {
-		return c
+		return c, nil
 	}
-	n := rand.Intn(int(max-maxc)) - int(minc)
+	// n := rand.Intn(int(max-maxc)) - int(minc)
+	nN, err := rand.Int(rand.Reader, big.NewInt(int64(int(max-maxc)+1+int(minc))))
+	if err != nil {
+		return color.RGBA{}, err
+	}
+	n := int(nN.Int64()) - int(minc)
 	return color.RGBA{
 		uint8(int(c.R) + n),
 		uint8(int(c.G) + n),
 		uint8(int(c.B) + n),
 		uint8(c.A),
-	}
+	}, nil
 }
 
 func min3(x, y, z uint8) (m uint8) {

@@ -2,12 +2,10 @@ package base64Captcha
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/golang/freetype"
-	"github.com/golang/freetype/truetype"
-	"golang.org/x/image/font"
 	"image"
 	"image/color"
 	"image/draw"
@@ -15,7 +13,11 @@ import (
 	"io"
 	"log"
 	"math"
-	"math/rand"
+	"math/big"
+
+	"github.com/golang/freetype"
+	"github.com/golang/freetype/truetype"
+	"golang.org/x/image/font"
 )
 
 // ItemChar captcha item of unicode characters
@@ -36,19 +38,38 @@ func NewItemChar(w int, h int, bgColor color.RGBA) *ItemChar {
 }
 
 // drawHollowLine draw strong and bold white line.
-func (item *ItemChar) drawHollowLine() *ItemChar {
+func (item *ItemChar) drawHollowLine() (*ItemChar, error) {
 
 	first := item.width / 20
 	end := first * 19
 
-	lineColor := RandLightColor()
+	lineColor, err := RandLightColor()
+	if err != nil {
+		return item, err
+	}
 
-	x1 := float64(rand.Intn(first))
+	// x1 := float64(rand.Intn(first))
+	x1n, err := rand.Int(rand.Reader, big.NewInt(int64(first)))
+	if err != nil {
+		return item, err
+	}
+	x1 := float64(x1n.Int64())
 	//y1 := float64(rand.Intn(y)+y);
 
-	x2 := float64(rand.Intn(first) + end)
+	// x2 := float64(rand.Intn(first) + end)
+	x2n, err := rand.Int(rand.Reader, big.NewInt(int64(first)))
+	if err != nil {
+		return item, err
+	}
+	x2 := float64(x2n.Int64() + int64(end))
+	//y2 := float64(rand.Intn(y)+y);
 
-	multiple := float64(rand.Intn(5)+3) / float64(5)
+	// multiple := float64(rand.Intn(5)+3) / float64(5)
+	multipleN, err := rand.Int(rand.Reader, big.NewInt(8))
+	if err != nil {
+		return item, err
+	}
+	multiple := float64(multipleN.Int64()+3) / float64(5)
 	if int(multiple*10)%3 == 0 {
 		multiple = multiple * -1.0
 	}
@@ -69,39 +90,58 @@ func (item *ItemChar) drawHollowLine() *ItemChar {
 		}
 	}
 
-	return item
+	return item, nil
 }
 
 // drawSineLine draw a sine line.
-func (item *ItemChar) drawSineLine() *ItemChar {
+func (item *ItemChar) drawSineLine() (*ItemChar, error) {
 	var py float64
 
 	//振幅
-	a := rand.Intn(item.height / 2)
+	aN, err := rand.Int(rand.Reader, big.NewInt(int64(item.height/2)))
+	if err != nil {
+		return item, err
+	}
+	a := int(aN.Int64())
 
 	//Y轴方向偏移量
-	b := random(int64(-item.height/4), int64(item.height/4))
+	b, err := random(int64(-item.height/4), int64(item.height/4))
+	if err != nil {
+		return item, err
+	}
 
 	//X轴方向偏移量
-	f := random(int64(-item.height/4), int64(item.height/4))
+	f, err := random(int64(-item.height/4), int64(item.height/4))
+	if err != nil {
+		return item, err
+	}
 	// 周期
 	var t float64
 	if item.height > item.width/2 {
-		t = random(int64(item.width/2), int64(item.height))
+		t, err = random(int64(item.width/2), int64(item.height))
+		if err != nil {
+			return item, err
+		}
 	} else if item.height == item.width/2 {
 		t = float64(item.height)
 	} else {
-		t = random(int64(item.height), int64(item.width/2))
+		t, err = random(int64(item.height), int64(item.width/2))
+		if err != nil {
+			return item, err
+		}
 	}
 	w := float64((2 * math.Pi) / t)
 
 	// 曲线横坐标起始位置
 	px1 := 0
-	px2 := int(random(int64(float64(item.width)*0.8), int64(item.width)))
+	px2, err := random(int64(float64(item.width)*0.8), int64(item.width))
 
-	c := RandDeepColor()
+	c, err := RandDeepColor()
+	if err != nil {
+		return item, err
+	}
 
-	for px := px1; px < px2; px++ {
+	for px := px1; px < int(px2); px++ {
 		if w != 0 {
 			py = float64(a)*math.Sin(w*float64(px)+f) + b + (float64(item.width) / float64(5))
 			i := item.height / 5
@@ -113,11 +153,11 @@ func (item *ItemChar) drawSineLine() *ItemChar {
 		}
 	}
 
-	return item
+	return item, nil
 }
 
 // drawSlimLine draw n slim-random-color lines.
-func (item *ItemChar) drawSlimLine(num int) *ItemChar {
+func (item *ItemChar) drawSlimLine(num int) (*ItemChar, error) {
 
 	first := item.width / 10
 	end := first * 9
@@ -126,21 +166,64 @@ func (item *ItemChar) drawSlimLine(num int) *ItemChar {
 
 	for i := 0; i < num; i++ {
 
-		point1 := point{X: rand.Intn(first), Y: rand.Intn(y)}
-		point2 := point{X: rand.Intn(first) + end, Y: rand.Intn(y)}
+		// point1 := point{X: rand.Intn(first), Y: rand.Intn(y)}
+		x1n, err := rand.Int(rand.Reader, big.NewInt(int64(first)))
+		if err != nil {
+			return item, err
+		}
+		y1n, err := rand.Int(rand.Reader, big.NewInt(int64(y)))
+		if err != nil {
+			return item, err
+		}
+		point1 := point{X: int(x1n.Int64()), Y: int(y1n.Int64())}
+
+		// point2 := point{X: rand.Intn(first) + end, Y: rand.Intn(y)}
+		x2n, err := rand.Int(rand.Reader, big.NewInt(int64(first)))
+		if err != nil {
+			return item, err
+		}
+		y2n, err := rand.Int(rand.Reader, big.NewInt(int64(y)))
+		if err != nil {
+			return item, err
+		}
+		point2 := point{X: int(x2n.Int64()) + end, Y: int(y2n.Int64())}
 
 		if i%2 == 0 {
-			point1.Y = rand.Intn(y) + y*2
-			point2.Y = rand.Intn(y)
+			// point1.Y = rand.Intn(y) + y*2
+			y1n, err := rand.Int(rand.Reader, big.NewInt(int64(y)))
+			if err != nil {
+				return item, err
+			}
+			point1.Y = int(y1n.Int64()) + y*2
+			// point2.Y = rand.Intn(y)
+			y2n, err := rand.Int(rand.Reader, big.NewInt(int64(y)))
+			if err != nil {
+				return item, err
+			}
+			point2.Y = int(y2n.Int64())
 		} else {
-			point1.Y = rand.Intn(y) + y*(i%2)
-			point2.Y = rand.Intn(y) + y*2
+			// point1.Y = rand.Intn(y) + y*(i%2)
+			y1n, err := rand.Int(rand.Reader, big.NewInt(int64(y)))
+			if err != nil {
+				return item, err
+			}
+			point1.Y = int(y1n.Int64()) + y*(i%2)
+			// point2.Y = rand.Intn(y) + y*2
+			y2n, err := rand.Int(rand.Reader, big.NewInt(int64(y)))
+			if err != nil {
+				return item, err
+			}
+			point2.Y = int(y2n.Int64()) + y*2
 		}
 
-		item.drawBeeline(point1, point2, RandDeepColor())
+		randDeepColor, err := RandDeepColor()
+		if err != nil {
+			return item, err
+		}
+		item.drawBeeline(point1, point2, randDeepColor)
 
 	}
-	return item
+	return item, nil
 }
 
 func (item *ItemChar) drawBeeline(point1 point, point2 point, lineColor color.RGBA) {
@@ -184,15 +267,40 @@ func (item *ItemChar) drawNoise(noiseText string, fonts []*truetype.Font) error 
 	c.SetClip(item.nrgba.Bounds())
 	c.SetDst(item.nrgba)
 	c.SetHinting(font.HintingFull)
-	rawFontSize := float64(item.height) / (1 + float64(rand.Intn(7))/float64(10))
+	// rawFontSize := float64(item.height) / (1 + float64(rand.Intn(7))/float64(10))
+	rfsN, err := rand.Int(rand.Reader, big.NewInt(7))
+	if err != nil {
+		return err
+	}
+	rawFontSize := float64(item.height) / (1 + float64(rfsN.Int64())/float64(10))
 
 	for _, char := range noiseText {
-		rw := rand.Intn(item.width)
-		rh := rand.Intn(item.height)
-		fontSize := rawFontSize/2 + float64(rand.Intn(5))
-		c.SetSrc(image.NewUniform(RandLightColor()))
+		rwN, err := rand.Int(rand.Reader, big.NewInt(int64(item.width)))
+		if err != nil {
+			return err
+		}
+		rw := int(rwN.Int64())
+		rhN, err := rand.Int(rand.Reader, big.NewInt(int64(item.height)))
+		if err != nil {
+			return err
+		}
+		rh := int(rhN.Int64())
+		fsN, err := rand.Int(rand.Reader, big.NewInt(5))
+		if err != nil {
+			return err
+		}
+		fontSize := rawFontSize/2 + float64(fsN.Int64())
+		randLightColor, err := RandLightColor()
+		if err != nil {
+			return err
+		}
+		c.SetSrc(image.NewUniform(randLightColor))
 		c.SetFontSize(fontSize)
-		c.SetFont(randFontFrom(fonts))
+		randFonts, err := randFontFrom(fonts)
+		if err != nil {
+			return err
+		}
+		c.SetFont(randFonts)
 		pt := freetype.Pt(rw, rh)
 		if _, err := c.DrawString(string(char), pt); err != nil {
 			log.Println(err)
@@ -217,12 +325,28 @@ func (item *ItemChar) drawText(text string, fonts []*truetype.Font) error {
 	fontWidth := item.width / len(text)
 
 	for i, s := range text {
-		fontSize := item.height * (rand.Intn(7) + 7) / 16
-		c.SetSrc(image.NewUniform(RandDeepColor()))
+		fsN, err := rand.Int(rand.Reader, big.NewInt(7))
+		if err != nil {
+			return err
+		}
+		fontSize := item.height * (int(fsN.Int64()) + 7) / 16
+		src, err := RandDeepColor()
+		if err != nil {
+			return err
+		}
+		c.SetSrc(image.NewUniform(src))
 		c.SetFontSize(float64(fontSize))
-		c.SetFont(randFontFrom(fonts))
+		randFont, err := randFontFrom(fonts)
+		if err != nil {
+			return err
+		}
+		c.SetFont(randFont)
 		x := fontWidth*i + fontWidth/fontSize
-		y := item.height/2 + fontSize/2 - rand.Intn(item.height/16*3)
+		rhN, err := rand.Int(rand.Reader, big.NewInt(int64(item.height/16*3)))
+		if err != nil {
+			return err
+		}
+		y := item.height/2 + fontSize/2 - int(rhN.Int64())
 		pt := freetype.Pt(x, y)
 		if _, err := c.DrawString(string(s), pt); err != nil {
 			return err

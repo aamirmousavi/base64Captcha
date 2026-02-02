@@ -1,8 +1,9 @@
 package base64Captcha
 
 import (
+	"crypto/rand"
 	"image/color"
-	"math/rand"
+	"math/big"
 	"strings"
 
 	"github.com/golang/freetype/truetype"
@@ -77,37 +78,51 @@ func (d *DriverChinese) ConvertFonts() *DriverChinese {
 }
 
 // GenerateIdQuestionAnswer generates captcha content and its answer
-func (d *DriverChinese) GenerateIdQuestionAnswer() (id, content, answer string) {
+func (d *DriverChinese) GenerateIdQuestionAnswer() (id, content, answer string, _ error) {
 	id = RandomId()
 
 	ss := strings.Split(d.Source, ",")
 	length := len(ss)
 	if length == 1 {
-		c := RandText(d.Length, ss[0])
-		return id, c, c
+		c, err := RandText(d.Length, ss[0])
+		if err != nil {
+			return "", "", "", err
+		}
+		return id, c, c, nil
 	}
 	if length <= d.Length {
-		c := RandText(d.Length, TxtNumbers+TxtAlphabet)
-		return id, c, c
+		c, err := RandText(d.Length, TxtNumbers+TxtAlphabet)
+		if err != nil {
+			return "", "", "", err
+		}
+		return id, c, c, nil
 	}
 
 	res := make([]string, d.Length)
 	for k := range res {
-		res[k] = ss[rand.Intn(length)]
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(length)))
+		if err != nil {
+			return "", "", "", err
+		}
+		res[k] = ss[int(n.Int64())]
 	}
 
 	content = strings.Join(res, "")
-	return id, content, content
+	return id, content, content, nil
 }
 
 // DrawCaptcha generates captcha item(image)
-func (d *DriverChinese) DrawCaptcha(content string) (item Item, err error) {
+func (d *DriverChinese) DrawCaptcha(content string) (item Item, _ error) {
 
 	var bgc color.RGBA
 	if d.BgColor != nil {
 		bgc = *d.BgColor
 	} else {
-		bgc = RandLightColor()
+		var err error
+		bgc, err = RandLightColor()
+		if err != nil {
+			return nil, err
+		}
 	}
 	itemChar := NewItemChar(d.Width, d.Height, bgc)
 
@@ -129,7 +144,10 @@ func (d *DriverChinese) DrawCaptcha(content string) (item Item, err error) {
 	//draw noise
 	if d.NoiseCount > 0 {
 		source := TxtNumbers + TxtAlphabet + ",.[]<>"
-		noise := RandText(d.NoiseCount, strings.Repeat(source, d.NoiseCount))
+		noise, err := RandText(d.NoiseCount, strings.Repeat(source, d.NoiseCount))
+		if err != nil {
+			return
+		}
 		err = itemChar.drawNoise(noise, d.fontsArray)
 		if err != nil {
 			return
@@ -137,9 +155,9 @@ func (d *DriverChinese) DrawCaptcha(content string) (item Item, err error) {
 	}
 
 	//draw content
-	err = itemChar.drawText(content, d.fontsArray)
+	err := itemChar.drawText(content, d.fontsArray)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	return itemChar, nil

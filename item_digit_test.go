@@ -23,7 +23,12 @@ func TestNewItemDigit(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewItemDigit(tt.args.width, tt.args.height, tt.args.dotCount, tt.args.maxSkew); got == nil {
+			got, err := NewItemDigit(tt.args.width, tt.args.height, tt.args.dotCount, tt.args.maxSkew)
+			if err != nil {
+				t.Errorf("NewItemDigit() error = %v", err)
+				return
+			}
+			if got == nil {
 				t.Errorf("NewItemDigit() = %v, want %v", got, tt.want)
 			}
 		})
@@ -32,7 +37,10 @@ func TestNewItemDigit(t *testing.T) {
 
 func TestItemDigit_EncodeBinary(t *testing.T) {
 
-	idd := NewItemDigit(80, 300, 20, 0.25)
+	idd, err := NewItemDigit(80, 300, 20, 0.25)
+	if err != nil {
+		t.Fatal("failed", err)
+	}
 
 	tests := []struct {
 		name string
@@ -79,7 +87,10 @@ func TestItemDigit_WriteTo(t *testing.T) {
 }
 
 func TestItemDigit_EncodeB64string(t *testing.T) {
-	idd := NewItemDigit(80, 300, 20, 0.25)
+	idd, err := NewItemDigit(80, 300, 20, 0.25)
+	if err != nil {
+		t.Fatal("failed", err)
+	}
 
 	tests := []struct {
 		name string
@@ -98,5 +109,8 @@ func TestItemDigit_EncodeB64string(t *testing.T) {
 }
 
 func TestItemDigit_DotCountZero(t *testing.T) {
-	_ = NewItemDigit(80, 300, 0, 0.25)
+	_, err := NewItemDigit(80, 300, 0, 0.25)
+	if err == nil {
+		t.Errorf("NewItemDigit() expected error for dotCount zero, got nil")
+	}
 }

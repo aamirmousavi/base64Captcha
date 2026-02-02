@@ -110,9 +110,14 @@ func TestDriverString_GenerateIdQuestionAnswer(t *testing.T) {
 	}{
 		// TODO: Add test cases.
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotId, gotContent, gotAnswer := tt.d.GenerateIdQuestionAnswer()
+			gotId, gotContent, gotAnswer, err := tt.d.GenerateIdQuestionAnswer()
+			if err != nil {
+				t.Errorf("DriverString.GenerateIdQuestionAnswer() error = %v", err)
+				return
+			}
 			if gotId != tt.wantId {
 				t.Errorf("DriverString.GenerateIdQuestionAnswer() gotId = %v, want %v", gotId, tt.wantId)
 			}

@@ -1,9 +1,10 @@
 package base64Captcha
 
 import (
+	"crypto/rand"
 	"image/color"
 	"log"
-	"math/rand"
+	"math/big"
 
 	"github.com/golang/freetype/truetype"
 )
@@ -33,7 +34,12 @@ func generateRandomRune(size int, code string) string {
 	end := lang[1]
 	randRune := make([]rune, size)
 	for i := range randRune {
-		idx := rand.Intn(end-start) + start
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(end-start)))
+		if err != nil {
+			log.Println("generate random rune error:", err)
+			n = big.NewInt(0)
+		}
+		idx := int(n.Int64()) + start
 		randRune[i] = rune(idx)
 	}
 	return string(randRune)
@@ -79,12 +85,16 @@ func (d *DriverLanguage) GenerateIdQuestionAnswer() (id, content, answer string)
 }
 
 // DrawCaptcha creates item
-func (d *DriverLanguage) DrawCaptcha(content string) (item Item, err error) {
+func (d *DriverLanguage) DrawCaptcha(content string) (item Item, _ error) {
 	var bgc color.RGBA
 	if d.BgColor != nil {
 		bgc = *d.BgColor
 	} else {
-		bgc = RandLightColor()
+		var err error
+		bgc, err = RandLightColor()
+		if err != nil {
+			return nil, err
+		}
 	}
 	itemChar := NewItemChar(d.Width, d.Height, bgc)
 
@@ -105,18 +115,18 @@ func (d *DriverLanguage) DrawCaptcha(content string) (item Item, err error) {
 
 	//draw noise
 	if d.NoiseCount > 0 {
-		noise := RandText(d.NoiseCount, TxtNumbers+TxtAlphabet+",.[]<>")
+		noise, err := RandText(d.NoiseCount, TxtNumbers+TxtAlphabet+",.[]<>")
 		err = itemChar.drawNoise(noise, fontsAll)
 		if err != nil {
-			return
+			return nil, err
 		}
 	}
 
 	//draw content
 	//use font that match your language
-	err = itemChar.drawText(content, []*truetype.Font{fontChinese})
+	err := itemChar.drawText(content, []*truetype.Font{fontChinese})
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	return itemChar, nil

@@ -1,7 +1,8 @@
 package base64Captcha
 
 import (
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 
 	"github.com/golang/freetype/truetype"
 )
@@ -23,7 +24,7 @@ var fontsAll = append(fontsSimple, fontChinese)
 var fontChinese = DefaultEmbeddedFonts.LoadFontByName("fonts/wqy-microhei.ttc")
 
 // randFontFrom choose random font family.选择随机的字体
-func randFontFrom(fonts []*truetype.Font) *truetype.Font {
+func randFontFrom(fonts []*truetype.Font) (*truetype.Font, error) {
 	fontCount := len(fonts)
 
 	if fontCount == 0 {
@@ -31,8 +32,13 @@ func randFontFrom(fonts []*truetype.Font) *truetype.Font {
 		fonts = fontsAll
 		fontCount = len(fontsAll)
 	}
-	index := rand.Intn(fontCount)
-	return fonts[index]
+	// index := rand.Intn(fontCount)
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(fontCount)))
+	if err != nil {
+		return nil, err
+	}
+	index := int(n.Int64())
+	return fonts[index], nil
 }
 
 var digitFontData = [][]byte{

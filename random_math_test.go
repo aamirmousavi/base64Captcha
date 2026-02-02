@@ -25,7 +25,12 @@ func TestRandText(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := RandText(tt.args.size, tt.args.sourceChars); got != tt.want {
+			got, err := RandText(tt.args.size, tt.args.sourceChars)
+			if err != nil {
+				t.Errorf("RandText() error = %v", err)
+				return
+			}
+			if got != tt.want {
 				t.Errorf("RandText() = %v, want %v", got, tt.want)
 			}
 		})
@@ -41,15 +46,19 @@ func TestRandom(t *testing.T) {
 		name string
 		args args
 	}{
-		{"", args{-10, 10}},
-		{"", args{-1, 5}},
-		{"", args{0, 15}},
-		{"", args{10, 14}},
-		{"", args{10, 10}},
+		{"A", args{-10, 10}},
+		{"B", args{-1, 5}},
+		{"C", args{0, 15}},
+		{"D", args{10, 14}},
+		{"E", args{10, 10}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := random(tt.args.min, tt.args.max)
+			got, err := random(tt.args.min, tt.args.max)
+			if err != nil {
+				t.Errorf("random() error = %v", err)
+				return
+			}
 			// if out of bound then error
 			if got < float64(tt.args.min) || got > float64(tt.args.max) {
 				t.Errorf("RandText() = %v, out of range", got)
@@ -61,7 +70,11 @@ func TestRandom(t *testing.T) {
 func TestRandDarkAndLightColor(t *testing.T) {
 	// Test RandColor
 	for i := 0; i < 100; i++ {
-		rgbA := RandColor()
+		rgbA, err := RandColor()
+		if err != nil {
+			t.Errorf("RandColor() error = %v", err)
+			return
+		}
 		if rgbA.R < 0 || rgbA.R > 255 ||
 			rgbA.B < 0 || rgbA.B > 255 ||
 			rgbA.G < 0 || rgbA.G > 255 {
@@ -71,7 +84,11 @@ func TestRandDarkAndLightColor(t *testing.T) {
 
 	// Test RandLightColor
 	for i := 0; i < 100; i++ {
-		rgbA := RandLightColor()
+		rgbA, err := RandLightColor()
+		if err != nil {
+			t.Errorf("RandLightColor() error = %v", err)
+			return
+		}
 		if rgbA.R < 200 || rgbA.R > 255 ||
 			rgbA.B < 200 || rgbA.B > 255 ||
 			rgbA.G < 200 || rgbA.G > 255 {
@@ -81,7 +98,11 @@ func TestRandDarkAndLightColor(t *testing.T) {
 
 	// Test RandDeepColor
 	for i := 0; i < 100; i++ {
-		rgbA := RandDeepColor()
+		rgbA, err := RandDeepColor()
+		if err != nil {
+			t.Errorf("RandDeepColor() error = %v", err)
+			return
+		}
 		if rgbA.R < 0 || rgbA.R > 255 ||
 			rgbA.B < 0 || rgbA.B > 255 ||
 			rgbA.G < 0 || rgbA.G > 255 {
@@ -108,7 +129,11 @@ func TestRand(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := randIntRange(tt.args.from, tt.args.to)
+			got, err := randIntRange(tt.args.from, tt.args.to)
+			if err != nil {
+				t.Errorf("randIntRange() error = %v", err)
+				return
+			}
 
 			// if out of bound then error
 			if got < tt.args.from || got > tt.args.to {
@@ -135,7 +160,11 @@ func TestRand(t *testing.T) {
 	}
 	for _, tt := range tests2 {
 		t.Run(tt.name, func(t *testing.T) {
-			got := randFloat64Range(tt.arg.from, tt.arg.to)
+			got, err := randFloat64Range(tt.arg.from, tt.arg.to)
+			if err != nil {
+				t.Errorf("randFloat64Range() error = %v", err)
+				return
+			}
 
 			// if out of bound then error
 			if got < tt.arg.from || got > tt.arg.to {
@@ -172,7 +201,11 @@ func TestRandBytes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := randBytes(tt.args.n)
+			got, err := randBytes(tt.args.n)
+			if err != nil {
+				t.Errorf("randBytes() error = %v", err)
+				return
+			}
 
 			// if out of bound then error
 			if len(got) != tt.want {
